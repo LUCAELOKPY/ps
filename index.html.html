@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>النظام الموحد لإدارة صيانة الدراعات</title>
+    <style>
+        :root { 
+            --ps-blue: #00439c; 
+            --bg-color: #f4f7f6; 
+            --success-green: #2ed573; 
+            --danger-red: #ff4757; 
+            --purple: #9b59b6; 
+            --warehouse-orange: #ffa500;
+        }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg-color); margin: 0; padding: 0; }
+        
+        .navbar { background-color: var(--ps-blue); display: flex; justify-content: center; gap: 10px; padding: 12px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .tab-btn { background: none; border: none; color: #b3d1ff; padding: 12px 24px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; border-radius: 8px; }
+        .tab-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+        .tab-btn.active { background: white; color: var(--ps-blue); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+
+        .container { max-width: 800px; margin: 25px auto; background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        .page-section { display: none; animation: fadeIn 0.4s ease-in-out forwards; }
+        .page-section.active-section { display: block; }
+        
+        h1, h2 { text-align: center; color: var(--ps-blue); margin-bottom: 25px; }
+        h2 { font-size: 20px; border-bottom: 2px solid var(--ps-blue); padding-bottom: 10px; margin-top: 30px; }
+        
+        label { display: block; font-weight: bold; margin: 15px 0 5px; color: #333; }
+        select, textarea, input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; background-color: #fafafa; }
+        select:focus, textarea:focus, input:focus { border-color: var(--ps-blue); outline: none; background-color: #fff; }
+        
+        .table-container { overflow-x: auto; margin-bottom: 25px; border-radius: 10px; border: 1px solid #ddd; }
+        table { width: 100%; border-collapse: collapse; text-align: center; font-size: 14px; min-width: 600px; }
+        th, td { padding: 12px; border: 1px solid #ddd; }
+        th { background-color: var(--ps-blue); color: white; }
+        tr { cursor: pointer; transition: 0.2s; }
+        tr:hover { background-color: #e8eff9; }
+        
+        .badge { padding: 5px 10px; border-radius: 15px; font-size: 12px; color: white; font-weight: bold; }
+        .bg-warehouse { background-color: var(--warehouse-orange); }
+        .bg-external { background-color: var(--purple); }
+        .bg-success { background-color: var(--success-green); }
+
+        .buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 15px 0; }
+        .btn-check input { display: none; }
+        .btn-check label { display: block; padding: 10px; background: #eee; text-align: center; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 14px; border: 1px solid #ccc; font-weight: 500; }
+        .btn-check input:checked + label { background: var(--ps-blue); color: white; border-color: var(--ps-blue); }
+        .full-width { grid-column: span 4; }
+
+        .action-options { display: flex; gap: 15px; margin: 20px 0; }
+        .option-card { flex: 1; text-align: center; padding: 12px; border: 2px solid #ddd; border-radius: 10px; cursor: pointer; background: #fafafa; font-weight: bold; transition: 0.3s; }
+        .option-card input { display: none; }
+        .option-card.active-green { border-color: var(--success-green); color: var(--success-green); background: #ebfbf2; }
+        .option-card.active-blue { border-color: var(--ps-blue); color: var(--ps-blue); background: #e8eff9; }
+        .option-card.active-red { border-color: var(--danger-red); color: var(--danger-red); background: #ffebee; }
+
+        .info-box { background: #f8f9fa; padding: 15px; border-radius: 10px; border-right: 5px solid var(--purple); margin-bottom: 15px; }
+        .info-box p { margin: 5px 0; font-size: 15px; color: #333; }
+
+        .hidden-section { display: none; animation: fadeIn 0.3s ease-in-out forwards; }
+        .flex-btns { display: flex; gap: 10px; margin-top: 25px; }
+        
+        button.btn-block { width: 100%; padding: 15px; background: var(--ps-blue); color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button.btn-block:hover { background: #002d6b; }
+        .btn-save { flex: 2; padding: 15px; background: var(--ps-blue); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-save:hover { background: #002d6b; }
+        .btn-delete { flex: 1; padding: 15px; background: var(--danger-red); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-delete:hover { background: #c0392b; }
+        
+        button:disabled { background: #ccc !important; cursor: not-allowed; }
+        .loading-text { text-align: center; color: #666; font-style: italic; padding: 15px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <button class="tab-btn active" onclick="switchTab(this, 'tab-send')">📥 إرسال للمخزن</button>
+    <button class="tab-btn" onclick="switchTab(this, 'tab-warehouse')">🛠️ ورشة الصيانة</button>
+    <button class="tab-btn" onclick="switchTab(this, 'tab-return')">🔄 العودة من الخارج</button>
+</div>
+
+<div id="tab-send" class="container page-section active-section">
+    <h1>مخزن صيانة الدراعات</h1>
+    
+    <label>اسم المدخل (الموظف)</label>
+    <input type="text" id="operatorName" list="namesList" placeholder="اكتب اسمك هنا" required>
+    <datalist id="namesList"></datalist>
+
+    <label>نوع الدراع</label>
+    <select id="type"><option>PS4</option><option>PS5</option></select>
+
+    <label>كود الدراع</label>
+    <select id="controllerNo"></select>
+
+    <label>الأزرار المعطلة</label>
+    <div class="buttons">
+        <div class="btn-check"><input type="checkbox" name="sendButtons" id="s_x" value="X"><label for="s_x">X</label></div>
+        <div class="btn-check"><input type="checkbox" name="sendButtons" id="s_o" value="O"><label for="s_o">O</label></div>
+        <div class="btn-check"><input type="checkbox" name="sendButtons" id="s_sq" value="□"><label for="s_sq">□</label></div>
+        <div class="btn-check"><input type="checkbox" name="sendButtons" id="s_tr" value="△"><label for="s_tr">△</label></div>
+        <div class="btn-check"><input type="checkbox" name="sendButtons" id="s_l1" value="L1"><label for="s_l1">L1</label></div>
+        <div class="btn-check"><input type="checkbox" name="sendButtons" id="s_l2" value="L2"><label for="s_l2">L2</label></div>
+        <div class="btn-check"><input type="checkbox" name="sendButtons" id="s_r1" value="R1"><label for="s_r1">R1</label></div>
+        <div class="btn-check"><input type="checkbox" name="sendButtons" id="s_r2" value="R2"><label for="s_r2">R2</label></div>
+        <div class="btn-check full-width"><input type="checkbox" name="sendButtons" id="s_al" value="Analog Left"><label for="s_al">Analog Left 🕹️</label></div>
+        <div class="btn-check full-width"><input type="checkbox" name="sendButtons" id="s_ar" value="Analog Right"><label for="s_ar">Analog Right 🕹️</label></div>
+    </div>
+
+    <label>وصف العطل</label>
+    <textarea id="description" rows="2" placeholder="تفاصيل المشكلة..."></textarea>
+
+    <label>تاريخ الإرسال</label>
+    <input type="date" id="sendDate">
+
+    <button onclick="saveRepair()" id="submitBtn" class="btn-block">إضافة إلى مخزن الصيانة</button>
+</div>
+
+<div id="tab-warehouse" class="container page-section">
+    <h1>مخزن ورشة الصيانة</h1>
+    
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>كود الدراع</th>
+                    <th>النوع</th>
+                    <th>اسم الموظف</th>
+                    <th>الأعطال الحالية</th>
+                    <th>الحالة</th>
+                </tr>
+            </thead>
+            <tbody id="warehouseTable">
+                <tr><td colspan="5" class="loading-text">جاري سحب وجلب البيانات من الجوجل شيت...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="editorSection" class="hidden-section">
+        <h2>لوحة تعديل وإرسال الدراع رقم (<span id="selectedId">--</span>)</h2>
+        <input type="hidden" id="w_rowIndex">
+        
+        <label>اسم موظف الإدخال</label>
+        <input type="text" id="w_operatorName" readonly style="background-color: #e9ecef; color: #555;">
+
+        <label>نوع الدراع</label>
+        <input type="text" id="w_controllerType" readonly style="background-color: #e9ecef; color: #555;">
+
+        <label>الأزرار المعطلة</label>
+        <div class="buttons">
+            <div class="btn-check"><input type="checkbox" name="warehouseButtons" id="w_x" value="X"><label for="w_x">X</label></div>
+            <div class="btn-check"><input type="checkbox" name="warehouseButtons" id="w_o" value="O"><label for="w_o">O</label></div>
+            <div class="btn-check"><input type="checkbox" name="warehouseButtons" id="w_sq" value="□"><label for="w_sq">□</label></div>
+            <div class="btn-check"><input type="checkbox" name="warehouseButtons" id="w_tr" value="△"><label for="w_tr">△</label></div>
+            <div class="btn-check full-width"><input type="checkbox" name="warehouseButtons" id="w_al" value="Analog Left"><label for="w_al">Analog Left 🕹️</label></div>
+            <div class="btn-check full-width"><input type="checkbox" name="warehouseButtons" id="w_ar" value="Analog Right"><label for="w_ar">Analog Right 🕹️</label></div>
+        </div>
+
+        <label>ملحوظات المشكلة</label>
+        <textarea id="w_description" rows="2"></textarea>
+
+        <label>إجراء عملية الصيانة</label>
+        <div class="action-options">
+            <label class="option-card" id="lblLocal">
+                <input type="radio" name="repairLocation" value="local" onclick="handleLocationChange('local')"> تم صيانة في المحل
+            </label>
+            <label class="option-card" id="lblExternal">
+                <input type="radio" name="repairLocation" value="external" onclick="handleLocationChange('external')"> إرسال إلى صيانة خارجية
+            </label>
+        </div>
+
+        <div id="externalSection" class="hidden-section">
+            <label>اسم المحل المرسل إليه</label>
+            <input type="text" id="shopName" list="shopsList" placeholder="اكتب أو اختر اسم المحل الخارجي">
+            <datalist id="shopsList"></datalist>
+
+            <label>اسم الراسل (الموظف المسؤول عن التسليم)</label>
+            <input type="text" id="senderName" placeholder="اكتب اسم الموظف">
+        </div>
+
+        <label>تاريخ الحركة</label>
+        <input type="date" id="actionDate">
+
+        <div class="flex-btns">
+            <button onclick="submitWarehouseAction('UPDATE')" id="w_submitBtn" class="btn-save">تأكيد وحفظ التعديلات</button>
+            <button onclick="submitWarehouseAction('DELETE')" id="w_deleteBtn" class="btn-delete">حذف من المخزن 🗑️</button>
+        </div>
+    </div>
+</div>
+
+<div id="tab-return" class="container page-section">
+    <h1>شاشة العودة من الصيانة الخارجية</h1>
+    
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>كود الدراع</th>
+                    <th>اسم الراسل</th>
+                    <th>مكان المرسل إليه (المحل)</th>
+                    <th>الأعطال عند الإرسال</th>
+                    <th>الحالة</th>
+                </tr>
+            </thead>
+            <tbody id="returnTable">
+                <tr><td colspan="5" class="loading-text">جاري سحب وجلب البيانات من الجوجل شيت...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="decisionSection" class="hidden-section">
+        <h2>اتخاذ قرار للدراع رقم (<span id="r_selectedId">--</span>)</h2>
+        <input type="hidden" id="r_rowIndex">
+        
+        <div class="info-box">
+            <p><strong>المحل المرسل إليه:</strong> <span id="infoShop">--</span></p>
+            <p><strong>الموظف الراسل:</strong> <span id="infoSender">--</span></p>
+            <p><strong>الأعطال المرسل بها:</strong> <span id="infoButtons" style="color:red; font-weight:bold;">--</span></p>
+            <p><strong>ملحوظة العطل السابقة:</strong> <span id="infoDesc">--</span></p>
+        </div>
+
+        <label>المبلغ المدفوع على الدراع (التكلفة بالجنيه)</label>
+        <input type="number" id="r_cost" placeholder="أدخل التكلفة المادية هنا" min="0">
+
+        <label>تاريخ حركة العودة</label>
+        <input type="date" id="returnDate">
+
+        <label>حالة الدراع الحالية بعد الاستلام</label>
+        <div class="action-options">
+            <label class="option-card" id="lblSuccess">
+                <input type="radio" name="repairDecision" value="done" onclick="handleDecisionChange('done')"> تأكيد الاستلام (تم الإصلاح) ✔️
+            </label>
+            <label class="option-card" id="lblReopen">
+                <input type="radio" name="repairDecision" value="reopen" onclick="handleDecisionChange('reopen')"> لم يُصلح (إعادة للمخزن) 🔄
+            </label>
+        </div>
+
+        <button onclick="submitReturnAction()" id="r_submitBtn" class="btn-block">تأكيد وحفظ حركة العودة</button>
+    </div>
+</div>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbR7fevp22Xe1Akoms4pMYtfXaJitKwCQhfnk7uf0oj0_1VzkDNonytIhNQBWjqsk9pCQ/exec";
+
+    window.onload = function() {
+        document.getElementById("sendDate").valueAsDate = new Date();
+        document.getElementById("actionDate").valueAsDate = new Date();
+        document.getElementById("returnDate").valueAsDate = new Date();
+        
+        const cSelect = document.getElementById("controllerNo");
+        for(let i=1; i<=100; i++) {
+            let opt = document.createElement("option");
+            opt.value = i; opt.text = "دراع كود " + i;
+            cSelect.appendChild(opt);
+        }
+
+        loadSavedNames();
+        loadSavedShops();
+        fetchDataFromSheet(); // جلب البيانات من الشيت فور فتح الصفحة
+    };
+
+    function switchTab(btn, tabId) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active-section'));
+        btn.classList.add('active');
+        document.getElementById(tabId).classList.add('active-section');
+    }
+
+    // جلب البيانات وقراءتها ديناميكياً من الجوجل شيت
+    function fetchDataFromSheet() {
+        fetch(API_URL + "?read=all")
+        .then(res => res.json())
+        .then(data => {
+            buildWarehouseTable(data);
+            buildReturnTable(data);
+        })
+        .catch(err => {
+            console.log("خطأ في جلب البيانات، تأكد من دعم دالة doGet للقرأة في السكريبت.");
+        });
+    }
+
+    function buildWarehouseTable(rows) {
+        const tbody = document.getElementById("warehouseTable");
+        tbody.innerHTML = "";
+        let count = 0;
+
+        rows.forEach((row, index) => {
+            // عرض الدراعات التي حالتها "موجود بالمخزن" فقط
+            if(row.status === "موجود بالمخزن") {
+                count++;
+                let tr = document.createElement("tr");
+                tr.innerHTML = `<td><b>${row.controllerNo}</b></td><td>${row.type}</td><td>${row.operatorName}</td><td>${row.buttons}</td><td><span class="badge bg-warehouse">موجود بالمخزن</span></td>`;
+                tr.onclick = () => selectWarehouseRow(index + 2, row.controllerNo, row.type, row.operatorName, row.buttons, row.description);
+                tbody.appendChild(tr);
+            }
+        });
+
+        if(count === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="padding:15px; color:#999;">المخزن فارغ حالياً، لا توجد دراعات بحاجة لصيانة.</td></tr>`;
+        }
+    }
+
+    function buildReturnTable(rows) {
+        const tbody = document.getElementById("returnTable");
+        tbody.innerHTML = "";
+        let count = 0;
+
+        rows.forEach((row, index) => {
+            // عرض الدراعات التي أرسلت لصيانة خارجية ولم تبدأ العودة بعد
+            if(row.status === "أرسل لصيانة خارجية") {
+                count++;
+                let tr = document.createElement("tr");
+                tr.innerHTML = `<td><b>${row.controllerNo}</b></td><td>${row.senderName || '--'}</td><td>${row.shopName || '--'}</td><td>${row.buttons}</td><td><span class="badge bg-external">خارج للصيانة</span></td>`;
+                tr.onclick = () => selectReturnRow(index + 2, row.controllerNo, row.senderName, row.shopName, row.buttons, row.description);
+                tbody.appendChild(tr);
+            }
+        });
+
+        if(count === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="padding:15px; color:#999;">لا توجد دراعات خارج الصيانة الخارجية حالياً.</td></tr>`;
+        }
+    }
+
+    /* 1. الإرسال للمخزن */
+    function loadSavedNames() {
+        const datalist = document.getElementById("namesList");
+        let savedNames = JSON.parse(localStorage.getItem("operatorNames")) || [];
+        savedNames.forEach(name => {
+            let option = document.createElement("option"); option.value = name;
+            datalist.appendChild(option);
+        });
+    }
+
+    function saveRepair() {
+        const operatorName = document.getElementById("operatorName").value.trim();
+        if(!operatorName) { alert("برجاء إدخال اسم المدخل أولاً!"); return; }
+
+        let savedNames = JSON.parse(localStorage.getItem("operatorNames")) || [];
+        if (!savedNames.includes(operatorName)) {
+            savedNames.push(operatorName);
+            localStorage.setItem("operatorNames", JSON.stringify(savedNames));
+        }
+
+        const btn = document.getElementById("submitBtn");
+        btn.innerText = "جاري الإرسال والترحيل الفوري...";
+        btn.disabled = true;
+        
+        let buttons = [];
+        document.querySelectorAll('input[name="sendButtons"]:checked').forEach(x => buttons.push(x.value));
+
+        const formData = new URLSearchParams();
+        formData.append("action", "INSERT");
+        formData.append("operatorName", operatorName);
+        formData.append("type", document.getElementById("type").value);
+        formData.append("controllerNo", document.getElementById("controllerNo").value);
+        formData.append("buttons", buttons.join(", ") || "لا يوجد أزرار محددة");
+        formData.append("description", document.getElementById("description").value);
+        formData.append("sendDate", document.getElementById("sendDate").value);
+
+        fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formData.toString(),
+            mode: "no-cors"
+        })
+        .then(() => {
+            alert("تم الترحيل بنجاح واكتمل الحفظ داخل الشيت!");
+            location.reload();
+        })
+        .catch(e => {
+            alert("حدث خطأ، يرجى مراجعة الاتصال.");
+            btn.innerText = "إضافة إلى مخزن الصيانة"; btn.disabled = false;
+        });
+    }
+
+    /* 2. الورشة والتعديل */
+    function selectWarehouseRow(rowIndex, id, type, operator, buttons, desc) {
+        document.getElementById("editorSection").style.display = "block";
+        document.getElementById("w_rowIndex").value = rowIndex;
+        document.getElementById("selectedId").innerText = id;
+        document.getElementById("w_operatorName").value = operator;
+        document.getElementById("w_controllerType").value = type;
+        document.getElementById("w_description").value = desc;
+
+        document.querySelectorAll('input[name="warehouseButtons"]').forEach(cb => cb.checked = false);
+        let btnArray = buttons.split(", ");
+        btnArray.forEach(btnValue => {
+            document.querySelectorAll('input[name="warehouseButtons"]').forEach(cb => {
+                if(cb.value === btnValue) cb.checked = true;
+            });
+        });
+        document.getElementById("editorSection").scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function handleLocationChange(type) {
+        const lblLocal = document.getElementById("lblLocal");
+        const lblExternal = document.getElementById("lblExternal");
+        const extSection = document.getElementById("externalSection");
+        if(type === 'local') {
+            lblLocal.className = "option-card active-green"; lblExternal.className = "option-card"; extSection.style.display = "none";
+        } else {
+            lblLocal.className = "option-card"; lblExternal.className = "option-card active-blue"; extSection.style.display = "block";
+        }
+    }
+
+    function loadSavedShops() {
+        const datalist = document.getElementById("shopsList");
+        let savedShops = JSON.parse(localStorage.getItem("savedShops")) || ["محل الأمل", "مركز الصقر"];
+        savedShops.forEach(shop => {
+            let opt = document.createElement("option"); opt.value = shop; datalist.appendChild(opt);
+        });
+    }
+
+    function submitWarehouseAction(operationType) {
+        const rowIndex = document.getElementById("w_rowIndex").value;
+        const controllerNo = document.getElementById("selectedId").innerText;
+        const locationType = document.querySelector('input[name="repairLocation"]:checked');
+        const actionDate = document.getElementById("actionDate").value;
+
+        if (operationType === 'DELETE' && !confirm("هل أنت متأكد من حذف هذا الدراع نهائياً؟")) return;
+
+        let shopName = "صيانة داخلية بالمحل";
+        let senderName = "لا يوجد";
+
+        if(operationType === 'UPDATE') {
+            if(!locationType) { alert("الرجاء تحديد إجراء الصيانة!"); return; }
+            if(locationType.value === 'external') {
+                shopName = document.getElementById("shopName").value.trim();
+                senderName = document.getElementById("senderName").value.trim();
+                if(!shopName || !senderName) { alert("يجب تحديد اسم المحل واسم الموظف الراسل!"); return; }
+            }
+        }
+
+        let updatedButtons = [];
+        document.querySelectorAll('input[name="warehouseButtons"]:checked').forEach(x => updatedButtons.push(x.value));
+
+        const formData = new URLSearchParams();
+        formData.append("action", operationType);
+        formData.append("rowIndex", rowIndex);
+        formData.append("controllerNo", controllerNo);
+        formData.append("buttons", updatedButtons.join(", ") || "لا يوجد أزرار");
+        formData.append("description", document.getElementById("w_description").value);
+        formData.append("status", operationType === 'DELETE' ? "محذوف" : (locationType.value === 'local' ? "جاهز للاستخدام" : "أرسل لصيانة خارجية"));
+        formData.append("shopName", shopName);
+        formData.append("senderName", senderName);
+        formData.append("actionDate", actionDate);
+
+        fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: formData.toString(), mode: "no-cors" })
+        .then(() => { alert("تم الحفظ والتحديث بنجاح!"); location.reload(); });
+    }
+
+    /* 3. العودة والقرار المالي */
+    function selectReturnRow(rowIndex, id, sender, shop, buttons, desc) {
+        document.getElementById("decisionSection").style.display = "block";
+        document.getElementById("r_rowIndex").value = rowIndex;
+        document.getElementById("r_selectedId").innerText = id;
+        document.getElementById("infoShop").innerText = shop;
+        document.getElementById("infoSender").innerText = sender;
+        document.getElementById("infoButtons").innerText = buttons;
+        document.getElementById("infoDesc").innerText = desc;
+        document.getElementById("decisionSection").scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function handleDecisionChange(decision) {
+        const lblSuccess = document.getElementById("lblSuccess");
+        const lblReopen = document.getElementById("lblReopen");
+        if(decision === 'done') {
+            lblSuccess.className = "option-card active-green"; lblReopen.className = "option-card";
+        } else {
+            lblSuccess.className = "option-card"; lblReopen.className = "option-card active-red";
+        }
+    }
+
+    function submitReturnAction() {
+        const rowIndex = document.getElementById("r_rowIndex").value;
+        const controllerNo = document.getElementById("r_selectedId").innerText;
+        const decisionType = document.querySelector('input[name="repairDecision"]:checked');
+        const cost = document.getElementById("r_cost").value.trim();
+        const returnDate = document.getElementById("returnDate").value;
+
+        if(!decisionType || !cost || !returnDate) { alert("برجاء ملء كافة الحقول أولاً!"); return; }
+
+        const formData = new URLSearchParams();
+        formData.append("action", "UPDATE");
+        formData.append("rowIndex", rowIndex);
+        formData.append("controllerNo", controllerNo);
+        formData.append("cost", cost);
+        formData.append("actionDate", returnDate);
+        formData.append("status", decisionType.value === 'done' ? "جاهز للاستخدام" : "موجود بالمخزن");
+
+        fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: formData.toString(), mode: "no-cors" })
+        .then(() => { alert("تم تسجيل حركة العودة بنجاح!"); location.reload(); });
+    }
+</script>
+</body>
+</html>
