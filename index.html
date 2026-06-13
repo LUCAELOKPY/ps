@@ -243,7 +243,9 @@
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbydUbXxcxPvl1OObZz_toPmPC94sSCCbgZe66Y7eLcE50mCFdcJ03JEoAaFOeNozW8EuA/exec";
+    // تم إدراج رابط الجوجل سكريبت الخاص بك هنا مباشرة
+    const API_URL = "https://script.google.com/macros/s/AKfycbyW3j47qu1zrlo4o1dksqz3s30F-9DTahp6h8siYJp61StVjecIFXGS49SoXzpXZ2hAFQ/exec";
+
     window.onload = function() {
         document.getElementById("sendDate").valueAsDate = new Date();
         document.getElementById("actionDate").valueAsDate = new Date();
@@ -258,7 +260,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbydUbXxcxPvl1OObZz_toPm
 
         loadSavedNames();
         loadSavedShops();
-        fetchDataFromSheet(); // جلب البيانات من الشيت فور فتح الصفحة
+        fetchDataFromSheet();
     };
 
     function switchTab(btn, tabId) {
@@ -266,18 +268,23 @@ const API_URL = "https://script.google.com/macros/s/AKfycbydUbXxcxPvl1OObZz_toPm
         document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active-section'));
         btn.classList.add('active');
         document.getElementById(tabId).classList.add('active-section');
+        
+        // جلب البيانات تلقائياً عند تغيير التبويب للتحديث المستمر
+        if(tabId === 'tab-warehouse' || tabId === 'tab-return') {
+            fetchDataFromSheet();
+        }
     }
 
-    // جلب البيانات وقراءتها ديناميكياً من الجوجل شيت
+    // دالة جلب البيانات وقراءتها من الجوجل شيت
     function fetchDataFromSheet() {
-        fetch(API_URL + "?read=all")
+        fetch(API_URL)
         .then(res => res.json())
         .then(data => {
             buildWarehouseTable(data);
             buildReturnTable(data);
         })
         .catch(err => {
-            console.log("خطأ في جلب البيانات، تأكد من دعم دالة doGet للقرأة في السكريبت.");
+            console.log("خطأ في جلب البيانات، تأكد من عمل Deployment بشكل سليم وصحيح للسكريبت.");
         });
     }
 
@@ -287,12 +294,21 @@ const API_URL = "https://script.google.com/macros/s/AKfycbydUbXxcxPvl1OObZz_toPm
         let count = 0;
 
         rows.forEach((row, index) => {
-            // عرض الدراعات التي حالتها "موجود بالمخزن" فقط
-            if(row.status === "موجود بالمخزن") {
+            // التحقق من الحقل بناءً على أسماء المفاتيح (Headers) بالشيت
+            // الكود يعتمد على أن العنوان في الشيت اسمه الدقيق "الحالة" أو "status"
+            let statusVal = row["الحالة"] || row["status"];
+            let cNo = row["كود الدراع"] || row["controllerNo"];
+            let typeVal = row["النوع"] || row["type"];
+            let opName = row["اسم المدخل (الموظف)"] || row["operatorName"];
+            let btnsVal = row["الأزرار المعطلة"] || row["buttons"];
+            let descVal = row["وصف العطل"] || row["description"];
+
+            if(statusVal === "موجود بالمخزن") {
                 count++;
                 let tr = document.createElement("tr");
-                tr.innerHTML = `<td><b>${row.controllerNo}</b></td><td>${row.type}</td><td>${row.operatorName}</td><td>${row.buttons}</td><td><span class="badge bg-warehouse">موجود بالمخزن</span></td>`;
-                tr.onclick = () => selectWarehouseRow(index + 2, row.controllerNo, row.type, row.operatorName, row.buttons, row.description);
+                tr.innerHTML = `<td><b>${cNo}</b></td><td>${typeVal}</td><td>${opName}</td><td>${btnsVal}</td><td><span class="badge bg-warehouse">موجود بالمخزن</span></td>`;
+                // تمرير رقم الصف الفعلي (index + 2) لأن البيانات تبدأ من الصف الثاني بالشيت
+                tr.onclick = () => selectWarehouseRow(index + 2, cNo, typeVal, opName, btnsVal, descVal);
                 tbody.appendChild(tr);
             }
         });
@@ -308,12 +324,18 @@ const API_URL = "https://script.google.com/macros/s/AKfycbydUbXxcxPvl1OObZz_toPm
         let count = 0;
 
         rows.forEach((row, index) => {
-            // عرض الدراعات التي أرسلت لصيانة خارجية ولم تبدأ العودة بعد
-            if(row.status === "أرسل لصيانة خارجية") {
+            let statusVal = row["الحالة"] || row["status"];
+            let cNo = row["كود الدراع"] || row["controllerNo"];
+            let btnsVal = row["الأزرار المعطلة"] || row["buttons"];
+            let descVal = row["وصف العطل"] || row["description"];
+            let sName = row["اسم الراسل"] || row["senderName"];
+            let sShop = row["اسم المحل"] || row["shopName"];
+
+            if(statusVal === "أرسل لصيانة خارجية") {
                 count++;
                 let tr = document.createElement("tr");
-                tr.innerHTML = `<td><b>${row.controllerNo}</b></td><td>${row.senderName || '--'}</td><td>${row.shopName || '--'}</td><td>${row.buttons}</td><td><span class="badge bg-external">خارج للصيانة</span></td>`;
-                tr.onclick = () => selectReturnRow(index + 2, row.controllerNo, row.senderName, row.shopName, row.buttons, row.description);
+                tr.innerHTML = `<td><b>${cNo}</b></td><td>${sName || '--'}</td><td>${sShop || '--'}</td><td>${btnsVal}</td><td><span class="badge bg-external">خارج للصيانة</span></td>`;
+                tr.onclick = () => selectReturnRow(index + 2, cNo, sName, sShop, btnsVal, descVal);
                 tbody.appendChild(tr);
             }
         });
@@ -323,16 +345,26 @@ const API_URL = "https://script.google.com/macros/s/AKfycbydUbXxcxPvl1OObZz_toPm
         }
     }
 
-    /* 1. الإرسال للمخزن */
     function loadSavedNames() {
         const datalist = document.getElementById("namesList");
         let savedNames = JSON.parse(localStorage.getItem("operatorNames")) || [];
+        datalist.innerHTML = "";
         savedNames.forEach(name => {
             let option = document.createElement("option"); option.value = name;
             datalist.appendChild(option);
         });
     }
 
+    function loadSavedShops() {
+        const datalist = document.getElementById("shopsList");
+        let savedShops = JSON.parse(localStorage.getItem("savedShops")) || ["محل الأمل", "مركز الصقر"];
+        datalist.innerHTML = "";
+        savedShops.forEach(shop => {
+            let opt = document.createElement("option"); opt.value = shop; datalist.appendChild(opt);
+        });
+    }
+
+    /* 1. حركة الإرسال للمخزن (INSERT) */
     function saveRepair() {
         const operatorName = document.getElementById("operatorName").value.trim();
         if(!operatorName) { alert("برجاء إدخال اسم المدخل أولاً!"); return; }
@@ -375,7 +407,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbydUbXxcxPvl1OObZz_toPm
         });
     }
 
-    /* 2. الورشة والتعديل */
+    /* 2. الورشة والتعديل (UPDATE / DELETE) */
     function selectWarehouseRow(rowIndex, id, type, operator, buttons, desc) {
         document.getElementById("editorSection").style.display = "block";
         document.getElementById("w_rowIndex").value = rowIndex;
@@ -385,12 +417,14 @@ const API_URL = "https://script.google.com/macros/s/AKfycbydUbXxcxPvl1OObZz_toPm
         document.getElementById("w_description").value = desc;
 
         document.querySelectorAll('input[name="warehouseButtons"]').forEach(cb => cb.checked = false);
-        let btnArray = buttons.split(", ");
-        btnArray.forEach(btnValue => {
-            document.querySelectorAll('input[name="warehouseButtons"]').forEach(cb => {
-                if(cb.value === btnValue) cb.checked = true;
+        if(buttons) {
+            let btnArray = buttons.split(", ");
+            btnArray.forEach(btnValue => {
+                document.querySelectorAll('input[name="warehouseButtons"]').forEach(cb => {
+                    if(cb.value === btnValue) cb.checked = true;
+                });
             });
-        });
+        }
         document.getElementById("editorSection").scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -405,14 +439,6 @@ const API_URL = "https://script.google.com/macros/s/AKfycbydUbXxcxPvl1OObZz_toPm
         }
     }
 
-    function loadSavedShops() {
-        const datalist = document.getElementById("shopsList");
-        let savedShops = JSON.parse(localStorage.getItem("savedShops")) || ["محل الأمل", "مركز الصقر"];
-        savedShops.forEach(shop => {
-            let opt = document.createElement("option"); opt.value = shop; datalist.appendChild(opt);
-        });
-    }
-
     function submitWarehouseAction(operationType) {
         const rowIndex = document.getElementById("w_rowIndex").value;
         const controllerNo = document.getElementById("selectedId").innerText;
@@ -423,6 +449,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbydUbXxcxPvl1OObZz_toPm
 
         let shopName = "صيانة داخلية بالمحل";
         let senderName = "لا يوجد";
+        let status = "جاهز للاستخدام";
 
         if(operationType === 'UPDATE') {
             if(!locationType) { alert("الرجاء تحديد إجراء الصيانة!"); return; }
@@ -430,19 +457,29 @@ const API_URL = "https://script.google.com/macros/s/AKfycbydUbXxcxPvl1OObZz_toPm
                 shopName = document.getElementById("shopName").value.trim();
                 senderName = document.getElementById("senderName").value.trim();
                 if(!shopName || !senderName) { alert("يجب تحديد اسم المحل واسم الموظف الراسل!"); return; }
+                status = "أرسل لصيانة خارجية";
+
+                let savedShops = JSON.parse(localStorage.getItem("savedShops")) || [];
+                if (!savedShops.includes(shopName)) {
+                    savedShops.push(shopName);
+                    localStorage.setItem("savedShops", JSON.stringify(savedShops));
+                }
             }
+        } else if (operationType === 'DELETE') {
+            // في حال الحذف، يمكنك إرسال بارامتر مخصص أو جعل الحالة "محذوف"
+            status = "محذوف"; 
         }
 
         let updatedButtons = [];
         document.querySelectorAll('input[name="warehouseButtons"]:checked').forEach(x => updatedButtons.push(x.value));
 
         const formData = new URLSearchParams();
-        formData.append("action", operationType);
+        formData.append("action", operationType); // سيمرر إما UPDATE أو DELETE
         formData.append("rowIndex", rowIndex);
         formData.append("controllerNo", controllerNo);
         formData.append("buttons", updatedButtons.join(", ") || "لا يوجد أزرار");
         formData.append("description", document.getElementById("w_description").value);
-        formData.append("status", operationType === 'DELETE' ? "محذوف" : (locationType.value === 'local' ? "جاهز للاستخدام" : "أرسل لصيانة خارجية"));
+        formData.append("status", status);
         formData.append("shopName", shopName);
         formData.append("senderName", senderName);
         formData.append("actionDate", actionDate);
@@ -451,15 +488,15 @@ const API_URL = "https://script.google.com/macros/s/AKfycbydUbXxcxPvl1OObZz_toPm
         .then(() => { alert("تم الحفظ والتحديث بنجاح!"); location.reload(); });
     }
 
-    /* 3. العودة والقرار المالي */
+    /* 3. العودة والقرار المالي (UPDATE) */
     function selectReturnRow(rowIndex, id, sender, shop, buttons, desc) {
         document.getElementById("decisionSection").style.display = "block";
         document.getElementById("r_rowIndex").value = rowIndex;
         document.getElementById("r_selectedId").innerText = id;
-        document.getElementById("infoShop").innerText = shop;
-        document.getElementById("infoSender").innerText = sender;
-        document.getElementById("infoButtons").innerText = buttons;
-        document.getElementById("infoDesc").innerText = desc;
+        document.getElementById("infoShop").innerText = shop || '--';
+        document.getElementById("infoSender").innerText = sender || '--';
+        document.getElementById("infoButtons").innerText = buttons || '--';
+        document.getElementById("infoDesc").innerText = desc || '--';
         document.getElementById("decisionSection").scrollIntoView({ behavior: 'smooth' });
     }
 
